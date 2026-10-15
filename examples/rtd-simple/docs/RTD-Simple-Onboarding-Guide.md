@@ -25,7 +25,7 @@ procedure; rtd-simple is what you run through it.
 **1. Build the image.** `make build` (or `docker build --platform=linux/amd64 -t
 rtd-simple:local .`). The build runs the unit tests and produces an amd64,
 non-root, read-only, `FROM scratch` image of about 5 MB. This exercises the
-packaging requirements from *Building your container* without any model or egress
+packaging requirements from [Building a Docker container](https://kb.indexexchange.com/index_cloud_partners/real_time_data_integration/building_your_container.htm) without any model or egress
 in the way.
 
 **2. Run it locally against the runtime contract.** `make up` starts the
@@ -46,7 +46,7 @@ it only reports what it sees.
 `/healthcheck` returning `SERVING`. `make metrics` shows the required
 `rpc_server_duration` histogram. `make grpc-health` (needs `grpcurl`) checks the
 gRPC health protocol. These are the signals Index Cloud polls before it routes
-traffic, per *Validating and deploying your container*.
+traffic, per [Building a Docker container](https://kb.indexexchange.com/index_cloud_partners/real_time_data_integration/building_your_container.htm).
 
 **4. Send conformance traffic.** `make harness` runs a gRPC client that asserts
 the contract: id echo, zero mutations on both the Publisher Request and DSP Bid
@@ -94,7 +94,7 @@ container can auto-deploy* defines three gates. rtd-simple is built to pass all 
   locally first.
 
 **7. Deploy through the Index Cloud onboarding flow.** Push the image and request
-onboarding per *Deploying your container in Index Cloud*. Because rtd-simple is inert,
+onboarding per *[Deploying your services in Index Cloud](https://kb.indexexchange.com/index_cloud_partners/real_time_data_integration/deploying_your_services_to_index_cloud.htm). Because rtd-simple is inert,
 a green run confirms the pipeline (registry, deploy, health gating, traffic
 routing) end to end. A red run points at the pipeline, not the code.
 
