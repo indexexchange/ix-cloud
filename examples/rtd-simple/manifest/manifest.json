@@ -141,12 +141,6 @@
   },
   "env": [
     {
-      "name": "MODEL_PATH",
-      "value": "/models",
-      "description": "Directory where model data is mounted; manifest.json and model_data/ sit at its top level. Optional: rtd-simple runs as a no-op with an empty mount and only checks for presence, it does not read model data.",
-      "required": false
-    },
-    {
       "name": "RTD_LOG_SAMPLE_N",
       "value": "0",
       "description": "Verbose per-request logging. 0 (default) logs errors only; N greater than 0 logs 1 of every N GetMutations calls. Baked image default; Index does not set this at deploy time.",
