@@ -137,7 +137,7 @@
   "resources": {
     "cpu": "1000m",
     "memory": "2Gi",
-    "targetQps": 4000
+    "targetQps": 1000
   },
   "env": [
     {
