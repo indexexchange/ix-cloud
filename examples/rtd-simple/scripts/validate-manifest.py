@@ -119,7 +119,21 @@ def grpcurl(gu, grpc_port, *extra, timeout=60):
 
 # ---- manifest structure -----------------------------------------------------
 
+# Manifest schema versions the Index test tool accepts.
+SUPPORTED_MANIFEST_VERSIONS = ["1.0.0"]
+
 CALVER_RE = re.compile(r"^\d{4}\.\d{2}\.\d{2}\.\d+(-[A-Za-z0-9.-]+)?(_(AMS|EMEA|APAC))?$")
+
+
+def _non_camel_keys(o):
+    if isinstance(o, dict):
+        for k, v in o.items():
+            if "_" in k or "-" in k or (k[:1].isupper() and not k.isupper()):
+                yield k
+            yield from _non_camel_keys(v)
+    elif isinstance(o, list):
+        for x in o:
+            yield from _non_camel_keys(x)
 
 
 def check_manifest_structure(m):
@@ -129,16 +143,20 @@ def check_manifest_structure(m):
     record(PASS if name else FAIL, f"metadata.name present: {name!r}")
 
     version = m.get("metadata", {}).get("version", "")
-    if CALVER_RE.match(version):
-        record(PASS, f"metadata.version is valid CalVer: {version}")
+    if version in SUPPORTED_MANIFEST_VERSIONS:
+        record(PASS, f"metadata.version is a supported manifest schema version: {version}")
     else:
-        record(FAIL, f"metadata.version {version!r} is not CalVer (YYYY.0M.0D.MICRO[-ann][_REGION])")
+        record(FAIL, f"metadata.version {version!r} is not a supported manifest schema version (want one of {SUPPORTED_MANIFEST_VERSIONS}; the CalVer is the image tag, not metadata.version)")
+
+    # Manifest keys are camelCase, as in the IAB ARTF spec example.
+    bad = sorted(set(_non_camel_keys(m)))
+    record(PASS if not bad else FAIL, "all manifest keys are camelCase" if not bad else f"non-camelCase manifest keys: {bad}")
 
     eps = m.get("endpoints", {})
     # RTB extension point RPCs.
-    rpcs = eps.get("rtbextensionpoint", {}).get("rpcs", [])
+    rpcs = eps.get("rtbExtensionPoint", {}).get("rpcs", [])
     if not rpcs:
-        record(FAIL, "endpoints.rtbextensionpoint.rpcs is empty")
+        record(FAIL, "endpoints.rtbExtensionPoint.rpcs is empty")
     for rpc in rpcs:
         full = rpc.get("rpc", "")
         if "/" in full and len(full.rsplit("/", 1)) == 2 and all(full.rsplit("/", 1)):
@@ -146,13 +164,13 @@ def check_manifest_structure(m):
         else:
             record(FAIL, f"rpc {full!r} is not in 'package.Service/Method' form")
         # lifecycle weights should sum to ~1.0
-        lifecycles = rpc.get("auction_lifecycle", {})
+        lifecycles = rpc.get("auctionLifecycle", {})
         if lifecycles:
             total = sum(float(v.get("weight", 0)) for v in lifecycles.values())
             if abs(total - 1.0) < 1e-6:
-                record(PASS, f"auction_lifecycle weights sum to 1.0 ({', '.join(lifecycles)})")
+                record(PASS, f"auctionLifecycle weights sum to 1.0 ({', '.join(lifecycles)})")
             else:
-                record(WARN, f"auction_lifecycle weights sum to {total} (expected 1.0)")
+                record(WARN, f"auctionLifecycle weights sum to {total} (expected 1.0)")
 
     # Metrics endpoint.
     met = eps.get("metrics", {})
@@ -217,6 +235,9 @@ def check_image(image, manifest_obj):
     # agent-manifest-version label.
     mver = labels.get("agent-manifest-version")
     record(PASS if mver else FAIL, f"label agent-manifest-version present: {mver!r}")
+    if mver:
+        record(PASS if mver in SUPPORTED_MANIFEST_VERSIONS else FAIL,
+               f"agent-manifest-version {mver!r} is supported (want one of {SUPPORTED_MANIFEST_VERSIONS})")
 
     # agent-manifest label must be valid JSON and deep-equal the file.
     raw = labels.get("agent-manifest")
@@ -229,6 +250,15 @@ def check_image(image, manifest_obj):
         record(FAIL, "label agent-manifest is not valid JSON", str(e))
         return info
     record(PASS, "label agent-manifest is valid JSON")
+    meta_ver = (embedded.get("metadata") or {}).get("version")
+    record(PASS if meta_ver in SUPPORTED_MANIFEST_VERSIONS else FAIL,
+           f"agent-manifest metadata.version {meta_ver!r} is a supported schema version (want one of {SUPPORTED_MANIFEST_VERSIONS}; the CalVer belongs in the image tag, not here)")
+    if mver:
+        record(PASS if mver == meta_ver else FAIL,
+               f"agent-manifest-version {mver!r} matches agent-manifest metadata.version {meta_ver!r}")
+    qps = (embedded.get("resources") or {}).get("targetQps")
+    record(PASS if isinstance(qps, (int, float)) and not isinstance(qps, bool) and qps > 0 else FAIL,
+           f"resources.targetQps is a positive number: {qps!r}")
     if embedded == manifest_obj:
         record(PASS, "embedded agent-manifest matches manifest file exactly")
     else:

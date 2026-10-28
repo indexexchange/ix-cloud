@@ -12,8 +12,10 @@ GO_IMAGE ?= golang:1.25.13-bookworm
 # prints the single-line JSON; used as --label "agent-manifest=$$(...)" in builds.
 MINIFY_MANIFEST = python3 -c 'import json;print(json.dumps(json.load(open("manifest/manifest.json"))))'
 # agent-manifest-version pins the manifest schema/contract version to the image,
-# alongside the agent-manifest label. Bump when the manifest format changes.
-MANIFEST_VERSION ?= 1.0
+# alongside the agent-manifest label. It must be a supported schema version
+# (currently only 1.0.0) and must equal metadata.version inside the manifest. It is
+# NOT the CalVer image tag. Bump when the manifest format changes.
+MANIFEST_VERSION ?= 1.0.0
 
 # Standard OCI image labels. The license is Apache-2.0 (sample code, no attribution
 # required); the source is also embedded in the image at /usr/src/rtd-simple.

@@ -1,7 +1,7 @@
 {
   "metadata": {
     "name": "rtd-simple",
-    "version": "2026.09.30.1",
+    "version": "1.0.0",
     "description": "No-op ARTF RTBExtensionPoint container that validates the Index Cloud onboarding pipeline end to end. Returns zero mutations on every request. Checks for a delivered model at MODEL_PATH and reports presence via metrics; does not read the model data. Logs errors only by default (per-request logging is opt-in via RTD_LOG_SAMPLE_N) and self-reports CPU, memory, and response-time metrics.",
     "maintainers": [
       {
@@ -11,17 +11,17 @@
     ]
   },
   "endpoints": {
-    "rtbextensionpoint": {
+    "rtbExtensionPoint": {
       "version": "v1",
       "rpcs": [
         {
           "rpc": "com.iabtechlab.bidstream.mutation.services.v1.RTBExtensionPoint/GetMutations",
-          "auction_lifecycle": {
-            "publisher_bid_request": {
+          "auctionLifecycle": {
+            "publisherBidRequest": {
               "weight": 0.5,
               "intents": []
             },
-            "dsp_bid_response": {
+            "dspBidResponse": {
               "weight": 0.5,
               "intents": []
             }
@@ -37,61 +37,70 @@
       "definitions": [
         {
           "name": "rpc_server_duration",
-          "metric_type": "histogram",
-          "fields": ["rpc_system", "rpc_grpc_status_code", "rpc_method", "rpc_service", "error_type"],
+          "metricType": "histogram",
+          "fields": [
+            "rpc_system",
+            "rpc_grpc_status_code",
+            "rpc_method",
+            "rpc_service",
+            "error_type"
+          ],
           "description": "Required Index metric: inbound RPC handler duration, seconds buckets (0.001 to 0.010)."
         },
         {
           "name": "rtd_simple_response_seconds_avg",
-          "metric_type": "gauge",
+          "metricType": "gauge",
           "fields": [],
           "description": "Average GetMutations handler duration in seconds (convenience; percentiles come from rpc_server_duration)."
         },
         {
           "name": "rtd_simple_cpu_seconds_total",
-          "metric_type": "counter",
+          "metricType": "counter",
           "fields": [],
           "description": "Cumulative container CPU time in seconds, read from the cgroup."
         },
         {
           "name": "rtd_simple_cpu_limit_cores",
-          "metric_type": "gauge",
+          "metricType": "gauge",
           "fields": [],
           "description": "CPU allocation in cores (denominator for CPU percent)."
         },
         {
           "name": "rtd_simple_memory_bytes",
-          "metric_type": "gauge",
+          "metricType": "gauge",
           "fields": [],
           "description": "Current container memory usage in bytes, read from the cgroup."
         },
         {
           "name": "rtd_simple_memory_limit_bytes",
-          "metric_type": "gauge",
+          "metricType": "gauge",
           "fields": [],
           "description": "Memory allocation in bytes (denominator for memory percent)."
         },
         {
           "name": "rtd_simple_memory_percent",
-          "metric_type": "gauge",
+          "metricType": "gauge",
           "fields": [],
           "description": "Container memory usage as a percent of its limit (0 to 100)."
         },
         {
           "name": "rtd_simple_build_info",
-          "metric_type": "gauge",
-          "fields": ["app_version", "model_version"],
+          "metricType": "gauge",
+          "fields": [
+            "app_version",
+            "model_version"
+          ],
           "description": "Build/version info; model_version reflects the delivered model manifest, if any."
         },
         {
           "name": "rtd_simple_model_present",
-          "metric_type": "gauge",
+          "metricType": "gauge",
           "fields": [],
           "description": "1 if a model manifest was found at MODEL_PATH at startup, 0 otherwise. Presence only; the container does not read the model data."
         },
         {
           "name": "rtd_simple_ready",
-          "metric_type": "gauge",
+          "metricType": "gauge",
           "fields": [],
           "description": "1 when the container is ready to serve traffic, 0 otherwise."
         }
@@ -128,7 +137,7 @@
   "resources": {
     "cpu": "1000m",
     "memory": "2Gi",
-    "target_qps": 4000
+    "targetQps": 4000
   },
   "env": [
     {
@@ -146,8 +155,7 @@
   ],
   "dependencies": {
     "artifacts": [
-      {
-      }
+      {}
     ]
   }
 }
