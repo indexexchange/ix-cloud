@@ -98,7 +98,7 @@ func pubReq(id, domain string, floor float64, eids bool) *pb.RTBRequest {
 	lc := lifecyclePublisher
 	u := &openrtb.BidRequest_User{}
 	if eids {
-		u.Eids = []*openrtb.BidRequest_User_EID{{Source: s("ex.com")}}
+		u.Eids = []*openrtb.BidRequest_EID{{Source: s("ex.com")}}
 	}
 	return &pb.RTBRequest{
 		Lifecycle: &lc, Id: s(id), Tmax: i32(5),
