@@ -4,7 +4,7 @@ An A/B testing example for Index Cloud: an ARTF `RTBExtensionPoint` container th
 
 **No arm ever returns a mutation.** Every response is what the [rtd-simple](../rtd-simple/) example returns (echoed `id`, `api_version`, `model_version="none"`, empty mutation list, OK), so the arms are indistinguishable to the auction. Results are proxy measures (how many content signals each arm could derive, and the CPU it costs). They do not show auction win rate or revenue. How to read them: [docs/evaluation.md](docs/evaluation.md).
 
-This is **sample code**, not a supported product; use of it with Index services is subject to the [Index Exchange Sample Code Terms](../../SAMPLE-CODE-TERMS.md). Bid shading is a separate example.
+This is **sample code**, not a supported product; use of it with Index services is subject to the [Index Exchange Sample Code Terms](../../SAMPLE-CODE-TERMS.md). 
 
 ## Best practices it demonstrates
 
