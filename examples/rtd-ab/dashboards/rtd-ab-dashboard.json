@@ -1,0 +1,1686 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_METRICS",
+      "label": "Metrics (Prometheus)",
+      "description": "Prometheus data source that scrapes the container /metrics endpoint",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "1.0.0"
+    }
+  ],
+  "title": "rtd-ab A/B experiment dashboard",
+  "description": "Control versus test for the rtd-ab content-signal A/B example, plus the standard capacity and latency panels.",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "refresh": "1m",
+  "tags": [
+    "rtd-ab",
+    "index-cloud"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "headroom",
+        "label": "CPU headroom target (%)",
+        "type": "custom",
+        "query": "60,65,70,75,80,85",
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "selected": true,
+          "text": "70",
+          "value": "70"
+        },
+        "options": [
+          {
+            "selected": false,
+            "text": "60",
+            "value": "60"
+          },
+          {
+            "selected": false,
+            "text": "65",
+            "value": "65"
+          },
+          {
+            "selected": true,
+            "text": "70",
+            "value": "70"
+          },
+          {
+            "selected": false,
+            "text": "75",
+            "value": "75"
+          },
+          {
+            "selected": false,
+            "text": "80",
+            "value": "80"
+          },
+          {
+            "selected": false,
+            "text": "85",
+            "value": "85"
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### rtd-ab: control versus test, content-signal enrichment\nAn A/B test example. Each auction is routed by the last hex digit of its auction id (`bid_request.id` before the first underscore): digits below the test-group count are test, so 25% is digits 0 to 3. Both arms return zero mutations; every measure below is a **proxy**: how many content signals each arm could derive, and what it costs. None of it shows auction win rate or revenue. z and t tiles use the increase over the dashboard time range, so select at least 1 hour. See `docs/evaluation.md` (|z| or |t| above 1.96 is significant at the 5% level; the sample-ratio tile flags above 3)."
+      }
+    },
+    {
+      "id": 2,
+      "type": "row",
+      "title": "Split and sample ratio",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 3
+      },
+      "panels": []
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Test share",
+      "description": "rtd_ab_test_pct: the test share, aligned to the nearest 1/16 (a multiple of 6.25%). It comes from ab-config.json in the models folder, or from the percentage baked into the image when there is none.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 3,
+        "x": 0,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "vertical"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "max(rtd_ab_test_pct)",
+          "legendFormat": "test %"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Models per arm and where they came from",
+      "description": "source=file: read from ab-config.json. builtin_absent: no ab-config.json in MODEL_PATH, so the built-in models run at the baked percentage. builtin_invalid: the file was rejected (see the one ERROR line in the container log); the built-in models run. Pods that disagree show up as extra rows.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 3,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "vertical"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "max by (arm, model, source) (rtd_ab_models_info)",
+          "legendFormat": "{{arm}}: {{model}} ({{source}})"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Sample-ratio check (standard errors from configured share, cumulative)",
+      "description": "|observed share - configured share| / binomial standard error, from cumulative counters. Above 3 is flagged. The share varies by chance because routing is by auction id. A flag points at skewed auction ids, a spike in unrouted requests, a scrape gap or pods with different splits.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 5,
+        "x": 9,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "vertical"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "abs((sum(rtd_ab_requests_total{arm=\"test\"}) / sum(rtd_ab_requests_total)) - (scalar(max(rtd_ab_test_pct)) / 100)) / sqrt((scalar(max(rtd_ab_test_pct)) / 100) * (1 - (scalar(max(rtd_ab_test_pct)) / 100)) / sum(rtd_ab_requests_total))",
+          "legendFormat": "SE"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Observed test share versus configured",
+      "description": "Observed share from 5 minute rates; the configured line is rtd_ab_test_pct.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 10,
+        "x": 14,
+        "y": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(rate(rtd_ab_requests_total{arm=\"test\"}[5m])) / sum(rate(rtd_ab_requests_total[5m]))",
+          "legendFormat": "observed"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "max(rtd_ab_test_pct) / 100",
+          "legendFormat": "configured"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "Content-signal coverage (higher is better)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "panels": []
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Enrichable rate",
+      "description": "Share of requests with at least one derivable content signal.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "vertical"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(increase(rtd_ab_content_enrichable_total{arm=\"control\"}[$__range])) / sum(increase(rtd_ab_requests_total{arm=\"control\"}[$__range]))",
+          "legendFormat": "control"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(increase(rtd_ab_content_enrichable_total{arm=\"test\"}[$__range])) / sum(increase(rtd_ab_requests_total{arm=\"test\"}[$__range]))",
+          "legendFormat": "test"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Signals per request",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "vertical"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(increase(rtd_ab_content_signals_sum{arm=\"control\"}[$__range])) / sum(increase(rtd_ab_content_signals_count{arm=\"control\"}[$__range]))",
+          "legendFormat": "control"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(increase(rtd_ab_content_signals_sum{arm=\"test\"}[$__range])) / sum(increase(rtd_ab_content_signals_count{arm=\"test\"}[$__range]))",
+          "legendFormat": "test"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "z: enrichable rate, test vs control",
+      "description": "Two-proportion z. Green: test is higher at the 5% level. Red: test is lower.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": -1.96
+              },
+              {
+                "color": "green",
+                "value": 1.96
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "vertical"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "((sum(increase(rtd_ab_content_enrichable_total{arm=\"test\"}[$__range]))/sum(increase(rtd_ab_requests_total{arm=\"test\"}[$__range])))-(sum(increase(rtd_ab_content_enrichable_total{arm=\"control\"}[$__range]))/sum(increase(rtd_ab_requests_total{arm=\"control\"}[$__range]))))/sqrt(((sum(increase(rtd_ab_content_enrichable_total{arm=\"control\"}[$__range]))+sum(increase(rtd_ab_content_enrichable_total{arm=\"test\"}[$__range])))/(sum(increase(rtd_ab_requests_total{arm=\"control\"}[$__range]))+sum(increase(rtd_ab_requests_total{arm=\"test\"}[$__range]))))*(1-((sum(increase(rtd_ab_content_enrichable_total{arm=\"control\"}[$__range]))+sum(increase(rtd_ab_content_enrichable_total{arm=\"test\"}[$__range])))/(sum(increase(rtd_ab_requests_total{arm=\"control\"}[$__range]))+sum(increase(rtd_ab_requests_total{arm=\"test\"}[$__range])))))*(1/sum(increase(rtd_ab_requests_total{arm=\"control\"}[$__range]))+1/sum(increase(rtd_ab_requests_total{arm=\"test\"}[$__range]))))",
+          "legendFormat": "z"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Welch t: signals per request, test vs control",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": -1.96
+              },
+              {
+                "color": "green",
+                "value": 1.96
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "vertical"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "((sum(increase(rtd_ab_content_signals_sum{arm=\"test\"}[$__range]))/sum(increase(rtd_ab_content_signals_count{arm=\"test\"}[$__range])))-(sum(increase(rtd_ab_content_signals_sum{arm=\"control\"}[$__range]))/sum(increase(rtd_ab_content_signals_count{arm=\"control\"}[$__range]))))/sqrt(((sum(increase(rtd_ab_content_signals_sumsq{arm=\"control\"}[$__range]))-(sum(increase(rtd_ab_content_signals_sum{arm=\"control\"}[$__range]))*sum(increase(rtd_ab_content_signals_sum{arm=\"control\"}[$__range]))/sum(increase(rtd_ab_content_signals_count{arm=\"control\"}[$__range]))))/(sum(increase(rtd_ab_content_signals_count{arm=\"control\"}[$__range]))-1))/sum(increase(rtd_ab_content_signals_count{arm=\"control\"}[$__range]))+((sum(increase(rtd_ab_content_signals_sumsq{arm=\"test\"}[$__range]))-(sum(increase(rtd_ab_content_signals_sum{arm=\"test\"}[$__range]))*sum(increase(rtd_ab_content_signals_sum{arm=\"test\"}[$__range]))/sum(increase(rtd_ab_content_signals_count{arm=\"test\"}[$__range]))))/(sum(increase(rtd_ab_content_signals_count{arm=\"test\"}[$__range]))-1))/sum(increase(rtd_ab_content_signals_count{arm=\"test\"}[$__range])))",
+          "legendFormat": "t"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Enrichable rate by arm",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(rate(rtd_ab_content_enrichable_total{arm=\"control\"}[5m])) / sum(rate(rtd_ab_requests_total{arm=\"control\"}[5m]))",
+          "legendFormat": "control"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(rate(rtd_ab_content_enrichable_total{arm=\"test\"}[5m])) / sum(rate(rtd_ab_requests_total{arm=\"test\"}[5m]))",
+          "legendFormat": "test"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Signals per request by arm",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(rate(rtd_ab_content_signals_sum{arm=\"control\"}[5m])) / sum(rate(rtd_ab_content_signals_count{arm=\"control\"}[5m]))",
+          "legendFormat": "control"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(rate(rtd_ab_content_signals_sum{arm=\"test\"}[5m])) / sum(rate(rtd_ab_content_signals_count{arm=\"test\"}[5m]))",
+          "legendFormat": "test"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Signals per request by source (stacked)",
+      "description": "source=none counts requests with no signal, so it is a share of requests rather than a count of signals.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum by (arm, source) (rate(rtd_ab_content_signal_total[5m])) / on (arm) group_left sum by (arm) (rate(rtd_ab_requests_total[5m]))",
+          "legendFormat": "{{arm}} {{source}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "Cost and health",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "panels": []
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Analysis time, mean (sampled 1 in 16)",
+      "description": "Wall time of routing plus analysis for one request. Budget: 1 microsecond target, 3 microseconds fail.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum by (arm) (rate(rtd_ab_analyze_seconds_sum[5m])) / sum by (arm) (rate(rtd_ab_analyze_seconds_count[5m]))",
+          "legendFormat": "{{arm}}"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Analysis time, p99 (sampled 1 in 16)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le, arm) (rate(rtd_ab_analyze_seconds_bucket[5m])))",
+          "legendFormat": "{{arm}}"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Requests per second by arm; recovered panics per second",
+      "description": "Expected test volume: fleet QPS x configured share (for example 10K QPS at 12.5% is about 1,250 per second).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum by (arm) (rate(rtd_ab_requests_total[5m]))",
+          "legendFormat": "{{arm}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum by (arm) (rate(rtd_ab_errors_total[5m]))",
+          "legendFormat": "errors {{arm}}"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Unrouted requests per second (not analyzed)",
+      "description": "no_id: bid_request missing or its id empty. not_hex: the auction id does not end in a hex digit. other_lifecycle: a lifecycle this container does not analyze. They are excluded from both arms. This should be 0; a rise in no_id or not_hex means Index changed the id format.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum by (reason) (rate(rtd_ab_unrouted_total[5m]))",
+          "legendFormat": "{{reason}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(rate(rtd_ab_unrouted_total[5m])) / (sum(rate(rtd_ab_unrouted_total[5m])) + sum(rate(rtd_ab_requests_total[5m])))",
+          "legendFormat": "unrouted share"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Performance panels (compare with the same time of day on the previous day)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "title": "Peak CPU % (hottest pod, over range)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "max"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "max(100 * rate(rtd_simple_cpu_seconds_total[5m]) / rtd_simple_cpu_limit_cores)"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Peak memory % (hottest pod, over range)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "max"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "max(rtd_simple_memory_percent)"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Peak response time p99 (fleet, over range)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 4
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "max"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(rpc_server_duration_bucket{rpc_method=\"GetMutations\"}[5m]))) * 1000"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "title": "Safe fleet QPS (hottest pod at $headroom%)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "min"
+          ],
+          "fields": ""
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(rate(rpc_server_duration_count{rpc_method=\"GetMutations\"}[5m])) * $headroom / max(100 * rate(rtd_simple_cpu_seconds_total[5m]) / rtd_simple_cpu_limit_cores)"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Average CPU % per pod (shaded band shows the max/min range; the peak edge is the ceiling, 5 ms SLA headroom line at 85%)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 45
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "peak (hottest pod)"
+            },
+            "properties": [
+              {
+                "id": "custom.fillBelowTo",
+                "value": "min (coolest pod)"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 12
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    6,
+                    6
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "min (coolest pod)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    6,
+                    6
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg (all pods)"
+            },
+            "properties": [
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "avg(100 * rate(rtd_simple_cpu_seconds_total[5m]) / rtd_simple_cpu_limit_cores)",
+          "legendFormat": "avg (all pods)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "max(100 * rate(rtd_simple_cpu_seconds_total[5m]) / rtd_simple_cpu_limit_cores)",
+          "legendFormat": "peak (hottest pod)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "min(100 * rate(rtd_simple_cpu_seconds_total[5m]) / rtd_simple_cpu_limit_cores)",
+          "legendFormat": "min (coolest pod)"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "title": "Peak response time over time (p99 and p95, fleet) \u2014 5 ms SLA line",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 45
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 6,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95"
+            },
+            "properties": [
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    6,
+                    6
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(rpc_server_duration_bucket{rpc_method=\"GetMutations\"}[5m]))) * 1000",
+          "legendFormat": "p99"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(rpc_server_duration_bucket{rpc_method=\"GetMutations\"}[5m]))) * 1000",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "title": "QPS (total)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 53
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "sum(rate(rpc_server_duration_count{rpc_method=\"GetMutations\"}[5m]))",
+          "legendFormat": "total"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Average QPS per pod (shaded band shows the max/min range across pods)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_METRICS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 53
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "max (busiest pod)"
+            },
+            "properties": [
+              {
+                "id": "custom.fillBelowTo",
+                "value": "min (quietest pod)"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 12
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    6,
+                    6
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "min (quietest pod)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    6,
+                    6
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg per pod"
+            },
+            "properties": [
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "avg(sum by (pod) (rate(rpc_server_duration_count{rpc_method=\"GetMutations\"}[5m])))",
+          "legendFormat": "avg per pod"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "max(sum by (pod) (rate(rpc_server_duration_count{rpc_method=\"GetMutations\"}[5m])))",
+          "legendFormat": "max (busiest pod)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_METRICS}"
+          },
+          "expr": "min(sum by (pod) (rate(rpc_server_duration_count{rpc_method=\"GetMutations\"}[5m])))",
+          "legendFormat": "min (quietest pod)"
+        }
+      ]
+    }
+  ]
+}

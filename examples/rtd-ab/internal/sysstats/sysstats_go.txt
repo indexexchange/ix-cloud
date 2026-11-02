@@ -1,0 +1,114 @@
+// Package sysstats reads this container's own CPU and memory usage from the
+// kernel cgroup virtual files. It has no dependencies and does no writes, so it
+// stays compatible with a scratch base image and a read-only root filesystem
+// (the cgroup files under /sys are a kernel virtual filesystem, always readable,
+// including by the non-root runtime user). cgroup v2 is read first, with a
+// cgroup v1 fallback.
+package sysstats
+
+import (
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
+)
+
+const (
+	cgV2CPUStat  = "/sys/fs/cgroup/cpu.stat"                     // v2: line "usage_usec N"
+	cgV2CPUMax   = "/sys/fs/cgroup/cpu.max"                      // v2: "<quota> <period>" or "max <period>"
+	cgV2MemCur   = "/sys/fs/cgroup/memory.current"              // v2: bytes
+	cgV2MemMax   = "/sys/fs/cgroup/memory.max"                  // v2: bytes or "max"
+	cgV1CPUAcct  = "/sys/fs/cgroup/cpuacct/cpuacct.usage"       // v1: nanoseconds
+	cgV1CPUQuota = "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"        // v1: quota (-1 = unlimited)
+	cgV1CPUPer   = "/sys/fs/cgroup/cpu/cpu.cfs_period_us"       // v1: period
+	cgV1MemUsage = "/sys/fs/cgroup/memory/memory.usage_in_bytes" // v1: bytes
+	cgV1MemLimit = "/sys/fs/cgroup/memory/memory.limit_in_bytes" // v1: bytes (huge = unlimited)
+	procMeminfo  = "/proc/meminfo"
+)
+
+// CPUSeconds returns cumulative container CPU time in seconds, and whether a
+// cgroup source was found.
+func CPUSeconds() (float64, bool) {
+	if b, err := os.ReadFile(cgV2CPUStat); err == nil {
+		for _, line := range strings.Split(string(b), "\n") {
+			if rest, ok := strings.CutPrefix(line, "usage_usec "); ok {
+				if v, err := strconv.ParseFloat(strings.TrimSpace(rest), 64); err == nil {
+					return v / 1e6, true
+				}
+			}
+		}
+	}
+	if b, err := os.ReadFile(cgV1CPUAcct); err == nil {
+		if v, err := strconv.ParseFloat(strings.TrimSpace(string(b)), 64); err == nil {
+			return v / 1e9, true
+		}
+	}
+	return 0, false
+}
+
+// MemoryBytes returns current container memory usage in bytes, and whether a
+// cgroup source was found.
+func MemoryBytes() (float64, bool) {
+	for _, p := range []string{cgV2MemCur, cgV1MemUsage} {
+		if b, err := os.ReadFile(p); err == nil {
+			if v, err := strconv.ParseFloat(strings.TrimSpace(string(b)), 64); err == nil {
+				return v, true
+			}
+		}
+	}
+	return 0, false
+}
+
+// CPULimitCores returns the CPU allocation for this container in cores (the
+// denominator for a CPU percentage). It reads the cgroup CPU quota; when no quota
+// is set (unlimited), it falls back to the number of CPUs available to the process.
+func CPULimitCores() float64 {
+	if b, err := os.ReadFile(cgV2CPUMax); err == nil { // "<quota> <period>" or "max <period>"
+		f := strings.Fields(strings.TrimSpace(string(b)))
+		if len(f) == 2 && f[0] != "max" {
+			q, e1 := strconv.ParseFloat(f[0], 64)
+			p, e2 := strconv.ParseFloat(f[1], 64)
+			if e1 == nil && e2 == nil && p > 0 {
+				return q / p
+			}
+		}
+	}
+	if qb, err := os.ReadFile(cgV1CPUQuota); err == nil {
+		if q, err := strconv.ParseFloat(strings.TrimSpace(string(qb)), 64); err == nil && q > 0 {
+			if pb, err := os.ReadFile(cgV1CPUPer); err == nil {
+				if p, err := strconv.ParseFloat(strings.TrimSpace(string(pb)), 64); err == nil && p > 0 {
+					return q / p
+				}
+			}
+		}
+	}
+	return float64(runtime.NumCPU()) // unlimited: use the cores available to us
+}
+
+// MemoryLimitBytes returns the memory allocation for this container in bytes (the
+// denominator for a memory percentage). When memory is unlimited it falls back to
+// total machine memory. Returns 0 only if nothing could be determined.
+func MemoryLimitBytes() float64 {
+	for _, p := range []string{cgV2MemMax, cgV1MemLimit} {
+		if b, err := os.ReadFile(p); err == nil {
+			s := strings.TrimSpace(string(b))
+			if s != "max" {
+				if v, err := strconv.ParseFloat(s, 64); err == nil && v > 0 && v < (1<<50) {
+					return v // a real limit (under 1 PiB; larger values are the unlimited sentinel)
+				}
+			}
+		}
+	}
+	if b, err := os.ReadFile(procMeminfo); err == nil { // unlimited: total machine memory
+		for _, line := range strings.Split(string(b), "\n") {
+			if rest, ok := strings.CutPrefix(line, "MemTotal:"); ok {
+				if f := strings.Fields(rest); len(f) >= 1 {
+					if kb, err := strconv.ParseFloat(f[0], 64); err == nil {
+						return kb * 1024
+					}
+				}
+			}
+		}
+	}
+	return 0
+}

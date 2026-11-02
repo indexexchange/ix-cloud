@@ -1,0 +1,10 @@
+rpc_server_duration histogram
+rtd_simple_build_info gauge
+rtd_simple_cpu_limit_cores gauge
+rtd_simple_cpu_seconds_total counter
+rtd_simple_memory_bytes gauge
+rtd_simple_memory_limit_bytes gauge
+rtd_simple_memory_percent gauge
+rtd_simple_model_present gauge
+rtd_simple_ready gauge
+rtd_simple_response_seconds_avg gauge

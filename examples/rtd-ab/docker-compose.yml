@@ -1,0 +1,32 @@
+# Local run mirroring the Index Cloud runtime contract: non-root 1000:1000,
+# read-only root filesystem, ports/paths from env. Both arms of the experiment
+# return zero mutations. The split is baked into the image (AB_TEST_PCT at build
+# time, aligned to 1/16); RTD_AB_TEST_PCT overrides it for local runs only.
+services:
+  rtd-ab:
+    build:
+      context: .
+      args:
+        VERSION: v0.1.0-local
+        AB_TEST_PCT: "12.5"
+    image: rtd-ab:local
+    container_name: rtd-ab
+    platform: linux/amd64
+    environment:
+      GRPC_PORT: "50051"
+      SERVER_PORT: "8080"
+      MODEL_PATH: "/models"
+      APP_VERSION: "v0.1.0-local"
+      # RTD_AB_TEST_PCT: "33.33"   # local override of the baked split; logs a WARN
+    ports:
+      - "50051:50051"  # gRPC RTBExtensionPoint + gRPC health
+      - "8080:8080"    # HTTP /metrics, /heartbeat, /healthcheck
+    volumes:
+      - ./models:/models:ro
+    read_only: true
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

@@ -1,0 +1,6 @@
+# Local build output (the image build uses Docker; local `go build` lands here)
+/out
+*.log
+.DS_Store
+# Generated protobuf bindings (make proto; the Docker build generates its own)
+/pkg/pb/

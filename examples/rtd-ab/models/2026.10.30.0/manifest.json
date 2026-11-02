@@ -1,0 +1,8 @@
+{
+  "name": "rtd-ab models 2026.10.30.0",
+  "models": [
+    "ab-config.json",
+    "model_a/content.json",
+    "model_b/content.json"
+  ]
+}

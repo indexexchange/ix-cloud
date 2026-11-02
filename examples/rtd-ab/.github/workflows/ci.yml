@@ -1,0 +1,43 @@
+# CI for the rtd-ab container.
+#
+# This workflow ships WITH the sample. In the ix-cloud monorepo it is inert (GitHub
+# Actions only runs workflows at the repository root). When you copy this sample to
+# be the root of your own repository, it activates and gives you build + contract
+# validation on every PR from day one.
+#
+# It BUILDS and VALIDATES only. It never publishes. Pushing a compliant CalVer tag
+# auto-deploys to Index Cloud production, so publishing stays a deliberate manual
+# step (`make release`, which prompts for a typed confirmation). Do NOT add a
+# `docker push` or `make release` step to this workflow, and do not give it registry
+# credentials.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read   # build + validate only; no publish, no deploy
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod   # use the pinned Go version from go.mod
+      - name: Generate protobuf bindings (pkg/pb is not committed)
+        run: make proto
+      - name: Vet, build, test
+        run: |
+          go vet ./...
+          go build ./...
+          go test ./...
+      - name: Install grpcurl
+        # The manifest validator introspects the gRPC endpoints. Installing grpcurl
+        # locally makes it talk to 127.0.0.1; without it, the dockerized fallback
+        # uses host.docker.internal, which does not resolve on Linux runners.
+        run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+      - name: Verify (build + manifest-vs-image + trivy + endpoints; no publish)
+        run: make verify

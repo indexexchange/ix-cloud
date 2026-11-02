@@ -1,0 +1,242 @@
+{
+  "metadata": {
+    "name": "rtd-ab",
+    "version": "1.0.0",
+    "description": "Analysis-only ARTF RTBExtensionPoint A/B test example for content-signal enrichment. Each PUBLISHER_BID_REQUEST auction is routed by the last hex digit of its auction id (bid_request.id before the first underscore): digits below the test-group count go to a test arm, the rest to control. The mix and each arm's enabled signal sources and allowlists are read at startup from ab-config.json and the model directories it names under MODEL_PATH (model_data/); without them the container uses built-in models at the percentage baked at build time (image label rtd.ab.test_pct). The share is aligned to the nearest 1/16. Both arms return zero mutations on every request and record how many content signals they could derive as rtd_ab_* metrics. Logs only startup lines, errors and at most one summary line per arm per minute.",
+    "maintainers": [
+      {
+        "name": "Index Exchange",
+        "email": "no-reply@indexexchange.com"
+      }
+    ]
+  },
+  "endpoints": {
+    "rtbExtensionPoint": {
+      "version": "v1",
+      "rpcs": [
+        {
+          "rpc": "com.iabtechlab.bidstream.mutation.services.v1.RTBExtensionPoint/GetMutations",
+          "auctionLifecycle": {
+            "publisherBidRequest": {
+              "weight": 1.0,
+              "intents": []
+            }
+          }
+        }
+      ]
+    },
+    "metrics": {
+      "protocol": "http",
+      "path": "/metrics",
+      "description": "Standard Prometheus metrics, including the required rpc_server_duration histogram with seconds buckets and the rtd_ab_* experiment metrics.",
+      "type": "prometheus",
+      "definitions": [
+        {
+          "name": "rpc_server_duration",
+          "metricType": "histogram",
+          "fields": [
+            "rpc_system",
+            "rpc_grpc_status_code",
+            "rpc_method",
+            "rpc_service",
+            "error_type"
+          ],
+          "description": "Required Index metric: inbound RPC handler duration, seconds buckets (0.001 to 0.010)."
+        },
+        {
+          "name": "rtd_simple_response_seconds_avg",
+          "metricType": "gauge",
+          "fields": [],
+          "description": "Average GetMutations handler duration in seconds (convenience; percentiles come from rpc_server_duration)."
+        },
+        {
+          "name": "rtd_simple_cpu_seconds_total",
+          "metricType": "counter",
+          "fields": [],
+          "description": "Cumulative container CPU time in seconds, read from the cgroup."
+        },
+        {
+          "name": "rtd_simple_cpu_limit_cores",
+          "metricType": "gauge",
+          "fields": [],
+          "description": "CPU allocation in cores (denominator for CPU percent)."
+        },
+        {
+          "name": "rtd_simple_memory_bytes",
+          "metricType": "gauge",
+          "fields": [],
+          "description": "Current container memory usage in bytes, read from the cgroup."
+        },
+        {
+          "name": "rtd_simple_memory_limit_bytes",
+          "metricType": "gauge",
+          "fields": [],
+          "description": "Memory allocation in bytes (denominator for memory percent)."
+        },
+        {
+          "name": "rtd_simple_memory_percent",
+          "metricType": "gauge",
+          "fields": [],
+          "description": "Container memory usage as a percent of its limit (0 to 100)."
+        },
+        {
+          "name": "rtd_simple_build_info",
+          "metricType": "gauge",
+          "fields": [
+            "app_version",
+            "model_version"
+          ],
+          "description": "Build/version info; model_version reflects the delivered model manifest, if any."
+        },
+        {
+          "name": "rtd_simple_model_present",
+          "metricType": "gauge",
+          "fields": [],
+          "description": "1 if a model manifest was found at MODEL_PATH at startup, 0 otherwise. Presence only; the container does not read the model data."
+        },
+        {
+          "name": "rtd_simple_ready",
+          "metricType": "gauge",
+          "fields": [],
+          "description": "1 when the container is ready to serve traffic, 0 otherwise."
+        },
+        {
+          "name": "rtd_ab_test_pct",
+          "metricType": "gauge",
+          "fields": [],
+          "description": "Effective share of auctions routed to the test arm, in percent (baked at build time, a multiple of 6.25)."
+        },
+        {
+          "name": "rtd_ab_build_info",
+          "metricType": "gauge",
+          "fields": [
+            "test_pct",
+            "strategy_control",
+            "strategy_test"
+          ],
+          "description": "Effective split and strategy names; value is always 1."
+        },
+        {
+          "name": "rtd_ab_models_info",
+          "metricType": "gauge",
+          "fields": [
+            "arm",
+            "model",
+            "source"
+          ],
+          "description": "Model directory per arm and where the models came from (file, builtin_absent, builtin_invalid); value is always 1."
+        },
+        {
+          "name": "rtd_ab_requests_total",
+          "metricType": "counter",
+          "fields": [
+            "arm"
+          ],
+          "description": "Auctions routed, by arm (control, test). Always present; excludes unrouted requests."
+        },
+        {
+          "name": "rtd_ab_unrouted_total",
+          "metricType": "counter",
+          "fields": [
+            "reason"
+          ],
+          "description": "Requests not analyzed, by reason (no_id, not_hex, other_lifecycle). Absent until the first one."
+        },
+        {
+          "name": "rtd_ab_analyze_seconds",
+          "metricType": "histogram",
+          "fields": [
+            "arm"
+          ],
+          "description": "Routing plus analysis time per request in seconds, sampled 1 in 16, 1 microsecond to 1 millisecond buckets."
+        },
+        {
+          "name": "rtd_ab_errors_total",
+          "metricType": "counter",
+          "fields": [
+            "arm"
+          ],
+          "description": "Recovered strategy panics by arm. Absent until the first one."
+        },
+        {
+          "name": "rtd_ab_content_enrichable_total",
+          "metricType": "counter",
+          "fields": [
+            "arm"
+          ],
+          "description": "Analyzed requests with at least one derivable signal."
+        },
+        {
+          "name": "rtd_ab_content_signals",
+          "metricType": "histogram",
+          "fields": [
+            "arm"
+          ],
+          "description": "Derivable content signals per request (0 to 10)."
+        },
+        {
+          "name": "rtd_ab_content_signals_sumsq",
+          "metricType": "counter",
+          "fields": [
+            "arm"
+          ],
+          "description": "Sum of squared signal counts, for a Welch t-test."
+        },
+        {
+          "name": "rtd_ab_content_signal_total",
+          "metricType": "counter",
+          "fields": [
+            "arm",
+            "source"
+          ],
+          "description": "Signals by source (category, genre, keyword, network, eid); none counts requests with no signal."
+        }
+      ]
+    },
+    "health": {
+      "liveness": {
+        "protocol": "grpc",
+        "rpc": "grpc.health.v1.Health/Check",
+        "description": "Liveness probe.",
+        "initialDelaySeconds": 10,
+        "periodSeconds": 5,
+        "timeoutSeconds": 2,
+        "failureThreshold": 3
+      },
+      "readiness": {
+        "protocol": "grpc",
+        "rpc": "grpc.health.v1.Health/Check",
+        "description": "Readiness probe. Per the Index Cloud KB, readiness uses the same grpc.health.v1.Health protocol as liveness, on GRPC_PORT, not a separate HTTP path.",
+        "initialDelaySeconds": 5,
+        "periodSeconds": 5,
+        "timeoutSeconds": 1,
+        "failureThreshold": 3
+      }
+    }
+  },
+  "security": {
+    "networkPolicies": {
+      "egress": {
+        "rules": []
+      }
+    }
+  },
+  "resources": {
+    "cpu": "1000m",
+    "memory": "2Gi",
+    "targetQps": 1000
+  },
+  "env": [
+    {
+      "name": "RTD_AB_SUMMARY_SEC",
+      "value": "60",
+      "description": "Interval in seconds of the per-arm summary log line (at most one line per arm per interval, none for an idle arm); 0 disables. Baked image default; Index does not set this at deploy time.",
+      "required": false
+    }
+  ],
+  "dependencies": {
+    "artifacts": [
+      {}
+    ]
+  }
+}
