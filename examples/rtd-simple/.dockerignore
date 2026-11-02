@@ -7,3 +7,5 @@
 **/.DS_Store
 *.log
 testdata/
+# Generated locally by `make proto`; the image build generates its own
+pkg/pb

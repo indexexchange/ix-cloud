@@ -62,3 +62,7 @@ credentials, private deploy notes) — see each example's `.dockerignore`.
 This repository and its examples are licensed **Apache-2.0** (see
 [`LICENSE`](LICENSE)). Each example also carries its own `LICENSE`; where present,
 that license governs the example (currently all Apache-2.0).
+
+Third-party material included here, and its licences, is listed in [`NOTICE`](NOTICE). Use of the
+samples with Index services is also subject to the
+[Index Exchange Sample Code Terms](SAMPLE-CODE-TERMS.md).

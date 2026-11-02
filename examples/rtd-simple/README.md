@@ -117,6 +117,19 @@ histogram_quantile(0.95, sum by (le) (rate(rpc_server_duration_bucket[5m])))
 Aggregate across instances with `sum(...) by (...)` as needed; for a fleet CPU %
 use `100 * sum(rate(rtd_simple_cpu_seconds_total[5m])) / sum(rtd_simple_cpu_limit_cores)`.
 
+## Generated code (protobuf bindings)
+
+`proto/` holds the IAB Tech Lab ARTF and OpenRTB `.proto` files, unmodified. The Go
+bindings in `pkg/pb/` are **not committed**; they are generated from those files with a
+pinned, checksum-verified `protoc` (33.4), `protoc-gen-go` (v1.36.11) and
+`protoc-gen-go-grpc` (v1.6.2), by `scripts/gen-proto.sh`:
+
+- `make build` (and `make up`) generate them inside the Docker build.
+- `make unit`, `make harness` and `make verify` generate them first if they are
+  missing or the `.proto` files changed.
+- To run `go build` / `go test` on your own machine, run `make proto` once. It writes
+  `pkg/pb/` (git-ignored). Docker is the only requirement.
+
 ## Run it
 
 ```bash
@@ -223,7 +236,7 @@ trivy image rtd-simple:local
 ```
 
 Current result: **0 vulnerabilities** (no OS layer on `scratch`; the static Go
-binary is built with Go 1.25.13 and patched grpc/protobuf, so `govulncheck` also
+binary is built with Go 1.26.10 and patched grpc/protobuf, so `govulncheck` also
 reports none). Choosing `scratch` keeps the vulnerability surface minimal, per the
 guidance to pick a minimal base image.
 
@@ -281,6 +294,11 @@ Licensed under **Apache-2.0**: you may freely use, copy, modify,
 and redistribute it, including in your own containers, subject to the Apache License, Version 2.0. See
 [LICENSE](LICENSE). Every source file carries an `SPDX-License-Identifier: Apache-2.0`
 header, and the image is labelled `org.opencontainers.image.licenses=Apache-2.0`.
+
+Use of the sample with Index services is also subject to the
+[Index Exchange Sample Code Terms](../../SAMPLE-CODE-TERMS.md). The IAB Tech Lab protocol
+definitions in `proto/` are third-party material under their own licences, not this
+sample's Apache License; see [NOTICE](NOTICE) and the [root NOTICE](../../NOTICE).
 
 ### Build upon it: the source ships in the image
 

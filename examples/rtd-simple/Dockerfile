@@ -8,14 +8,18 @@
 #   - small image (FROM scratch; well under the 1 GiB limit)
 
 # ---- build stage --------------------------------------------------------------
-FROM --platform=$BUILDPLATFORM golang:1.25.13-bookworm AS build
+FROM --platform=$BUILDPLATFORM golang:1.26.10-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 # Use the pinned module graph as-is (reproducible, preserves security-pinned
 # indirect versions). Do NOT `go mod tidy` here: tidy re-runs MVS and would
 # downgrade indirect deps bumped to patched releases.
 RUN go mod download
-COPY pkg/ ./pkg/
+# The protobuf Go bindings (pkg/pb) are not committed; generate them from the IAB
+# .proto files with a pinned, checksum-verified protoc (see scripts/gen-proto.sh).
+COPY proto/ ./proto/
+COPY scripts/gen-proto.sh ./scripts/gen-proto.sh
+RUN sh scripts/gen-proto.sh
 COPY internal/ ./internal/
 COPY cmd/ ./cmd/
 RUN go test ./...   # fail the build if the no-op/contract logic is broken
