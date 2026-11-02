@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "arms": {
+    "control": { "model": "model_a", "pct": 75 },
+    "test": { "model": "model_b", "pct": 25 }
+  }
+}

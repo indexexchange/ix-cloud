@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        example: [rtd-simple]
+        example: [rtd-simple, rtd-ab]
     defaults:
       run:
         working-directory: examples/${{ matrix.example }}
