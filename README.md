@@ -15,6 +15,7 @@ change what your logic needs, validate it with the tools here, and ship.
 ix-cloud/
 ├── examples/     # complete, buildable sample containers (one folder each)
 │   └── rtd-simple/        # no-op reference: full ARTF contract, zero mutations
+│   └── rtd-ab/            # example technique for A/B testing
 ├── tools/        # standalone tooling for building/validating containers (one folder each)
 │   └── validate-manifest/ # checks a manifest.json against a built image
 └── monitoring/   # Grafana dashboards / observability artifacts (one folder each)
