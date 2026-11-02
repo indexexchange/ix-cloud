@@ -230,8 +230,7 @@
     {
       "name": "RTD_AB_SUMMARY_SEC",
       "value": "60",
-      "description": "Interval in seconds of the per-arm summary log line (at most one line per arm per interval, none for an idle arm); 0 disables. Baked image default; Index does not set this at deploy time.",
-      "required": false
+      "description": "Interval in seconds of the per-arm summary log line (at most one line per arm per interval, none for an idle arm); 0 disables."
     }
   ],
   "dependencies": {
