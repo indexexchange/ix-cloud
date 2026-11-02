@@ -27,6 +27,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod   # use the pinned Go version from go.mod
+      - name: Generate protobuf bindings (pkg/pb is not committed)
+        run: make proto
       - name: Vet, build, test
         run: |
           go vet ./...

@@ -4,7 +4,7 @@ IMAGE ?= rtd-simple:local
 VERSION ?= v0.1.0-local
 HTTP_ADDR ?= localhost:8080
 GRPC_ADDR ?= localhost:50051
-GO_IMAGE ?= golang:1.25.13-bookworm
+GO_IMAGE ?= golang:1.26.10-bookworm
 
 # Per the IAB ARTF spec, the agent manifest is embedded in the image as a label
 # named "agent-manifest" whose value is the manifest JSON. Keep manifest/manifest.json
@@ -31,7 +31,7 @@ OCI_LABELS = \
 REPO ?= your-namespace/rtd-simple
 TAG  ?= $(shell date -u +%Y.%m.%d).0
 
-.PHONY: build up down logs ps health metrics unit harness grpc-health test validate-manifest verify release clean
+.PHONY: proto build up down logs ps health metrics unit harness grpc-health test validate-manifest verify release clean
 
 build: ## Build the amd64 image (runs unit tests inside the build)
 	docker build --platform=linux/amd64 --build-arg VERSION=$(VERSION) \
@@ -58,10 +58,24 @@ health: ## Curl liveness + readiness
 metrics: ## Fetch Prometheus metrics (includes required rpc_server_duration)
 	curl -fsS http://$(HTTP_ADDR)/metrics
 
-unit: ## Run Go unit tests
+# pkg/pb (protobuf Go bindings) is generated, not committed. Targets that run Go
+# code on the host or in a golang container depend on this stamp, which re-runs
+# generation whenever a .proto file or the generator script changes.
+PB_STAMP := pkg/pb/.generated
+PB_SRC := $(shell find proto -name '*.proto') scripts/gen-proto.sh
+
+proto: ## Generate pkg/pb from the IAB .proto files in proto/ (Docker; pinned, checksum-verified protoc)
+	docker run --rm -v "$(PWD)":/work -w /work \
+		-e HOST_UID=$$(id -u) -e HOST_GID=$$(id -g) $(GO_IMAGE) sh scripts/gen-proto.sh
+	@touch $(PB_STAMP)
+
+$(PB_STAMP): $(PB_SRC)
+	$(MAKE) proto
+
+unit: $(PB_STAMP) ## Run Go unit tests
 	docker run --rm -v "$(PWD)":/work -w /work $(GO_IMAGE) go test ./...
 
-harness: ## Run the conformance harness against the running container
+harness: $(PB_STAMP) ## Run the conformance harness against the running container
 	docker run --rm -v "$(PWD)":/work -w /work $(GO_IMAGE) \
 		go run ./cmd/testrunner -addr host.docker.internal:50051 -metrics http://host.docker.internal:8080/metrics
 
@@ -77,7 +91,7 @@ validate-manifest: ## Validate manifest/manifest.json against an image. Usage: m
 #   build -> manifest-vs-image -> vulnerability scan -> endpoint/no-op contract.
 # This is exactly what CI runs (see .github/workflows/ci.yml); `release` reuses it.
 # It is safe to run anywhere (no registry credentials, no push).
-verify: build ## Build + run all pre-publish checks against $(IMAGE); never pushes. CI runs this.
+verify: $(PB_STAMP) build ## Build + run all pre-publish checks against $(IMAGE); never pushes. CI runs this.
 	@echo "==> verify 1/3 manifest matches image (labels, declared endpoints, metric contract)"
 	python3 scripts/validate-manifest.py $(IMAGE) --manifest manifest/manifest.json --models models
 	@echo "==> verify 2/3 vulnerability scan (fails on any CVSS>=9 / CRITICAL, the Index deploy gate)"

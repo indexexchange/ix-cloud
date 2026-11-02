@@ -4,3 +4,5 @@
 *.test
 *.log
 .DS_Store
+# Generated protobuf bindings (make proto; the Docker build generates its own)
+/pkg/pb/

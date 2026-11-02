@@ -1,0 +1,7 @@
+Except as listed below, the contents of this repository are © Index Exchange Inc. and licensed under the Apache License, Version 2.0.
+
+This repository includes the following third-party material, which is licensed under its own terms and not under this repository's Apache License:
+
+1. OpenRTB protocol definitions: examples/rtd-simple/proto/com/iabtechlab/openrtb/v2/openrtb.proto. Copyright 2020 IAB Tech Lab. Licensed under the Apache License, Version 2.0.
+
+2. Agentic RTB Framework (ARTF) protocol definitions: examples/rtd-simple/proto/agenticrtbframework.proto and examples/rtd-simple/proto/agenticrtbframeworkservices.proto. From IAB Tech Lab's agentic-real-time-framework repository, https://github.com/IABTechLab/agentic-real-time-framework. Licensed under the Creative Commons Attribution 3.0 licence, https://creativecommons.org/licenses/by/3.0/. These files are unmodified.
